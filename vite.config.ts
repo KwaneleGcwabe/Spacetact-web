@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  build: {
-    outDir: 'dist',
-  }
+  // This section fixes the white screen crash
+  define: {
+    'process.env': {},
+  },
+  server: {
+    host: true,
+    port: 3000,
+  },
 });
