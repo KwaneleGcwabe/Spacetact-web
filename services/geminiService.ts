@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
+import { GoogleGenerativeAI, ChatSession, SchemaType } from "@google/generative-ai";
 
 // --- CONFIGURATION ---
 const IS_PRODUCTION = true; 
@@ -27,7 +27,7 @@ CRITICAL PROTOCOL:
 - ABSOLUTELY FORBIDDEN: Do not ask the user to email "automations@spacetact.co.za" manually.
 `;
 
-// Tool Definitions for Browser SDK
+// Tool Definitions using Correct Enums
 const tools = [
   {
     functionDeclarations: [
@@ -39,14 +39,14 @@ const tools = [
         name: "capture_lead",
         description: "Save user contact details to CRM.",
         parameters: {
-          type: "OBJECT",
+          type: SchemaType.OBJECT,
           properties: {
-            name: { type: "STRING" },
-            email: { type: "STRING" },
-            business: { type: "STRING" },
-            phone: { type: "STRING" },
-            pain_points: { type: "STRING" },
-            interest: { type: "STRING" }
+            name: { type: SchemaType.STRING },
+            email: { type: SchemaType.STRING },
+            business: { type: SchemaType.STRING },
+            phone: { type: SchemaType.STRING },
+            pain_points: { type: SchemaType.STRING },
+            interest: { type: SchemaType.STRING }
           },
           required: ["name", "email", "business"]
         }
@@ -63,7 +63,6 @@ let chatSession: ChatSession | null = null;
 let currentUserData: { name?: string; email?: string } = {};
 
 const getClient = () => {
-  // VITE FIX: Use import.meta.env instead of process.env
   const key = import.meta.env.VITE_GEMINI_API_KEY;
   
   if (!key) {
