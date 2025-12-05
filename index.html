@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spacetact | AI Automation Solutions</title>
+    <!-- Tailwind via CDN is fine for now -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
@@ -15,21 +16,21 @@
             },
             colors: {
               brand: {
-                primary: '#8B5CF6', // Vibrant Purple
-                secondary: '#A855F7', // Light Purple
-                dark: '#7C3AED', // Darker interaction state
-                bg: '#F3E8FF', // Light purple bg for pills/icons
+                primary: '#8B5CF6',
+                secondary: '#A855F7',
+                dark: '#7C3AED',
+                bg: '#F3E8FF',
               },
               text: {
-                main: '#0A0A0A', // Very dark gray/black
-                heading: '#000000', // Pure black
-                body: '#404040', // Dark gray
-                muted: '#525252', // Muted gray
-                light: '#A3A3A3', // Footer links
+                main: '#0A0A0A',
+                heading: '#000000',
+                body: '#404040',
+                muted: '#525252',
+                light: '#A3A3A3',
               },
               surface: {
-                card: '#F9FAFB', // Soft gray
-                border: '#E5E5E5', // Light gray border
+                card: '#F9FAFB',
+                border: '#E5E5E5',
               }
             },
             boxShadow: {
@@ -77,7 +78,6 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
-      /* Hide scrollbar for clean look in mockups */
       .scrollbar-hide::-webkit-scrollbar {
           display: none;
       }
@@ -86,22 +86,10 @@
           scrollbar-width: none;
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
-  }
-}
-</script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <!-- THIS IS THE MISSING PART THAT STARTS THE APP -->
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
