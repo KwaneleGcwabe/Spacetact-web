@@ -76,8 +76,9 @@ export const initializeChat = async () => {
   const ai = getClient();
   if (!ai) return;
 
+  // UPDATED: Using specific model version to prevent 404 errors
   const model = ai.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-1.5-flash-002',
     systemInstruction: SYSTEM_INSTRUCTION,
     tools: tools, 
   });
