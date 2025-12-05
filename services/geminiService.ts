@@ -1,7 +1,6 @@
-import { GoogleGenAI, Chat, Type } from "@google/genai";
+import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
 
 // --- CONFIGURATION ---
-// TOGGLE THIS TO TRUE WHEN GOING LIVE
 const IS_PRODUCTION = true; 
 
 const WEBHOOK_TEST = "https://n8n.spacetact.co.za/webhook-test/lead-capture";
@@ -28,6 +27,7 @@ CRITICAL PROTOCOL:
 - ABSOLUTELY FORBIDDEN: Do not ask the user to email "automations@spacetact.co.za" manually.
 `;
 
+// Tool Definitions for Browser SDK
 const tools = [
   {
     functionDeclarations: [
@@ -39,14 +39,14 @@ const tools = [
         name: "capture_lead",
         description: "Save user contact details to CRM.",
         parameters: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
-            name: { type: Type.STRING },
-            email: { type: Type.STRING },
-            business: { type: Type.STRING },
-            phone: { type: Type.STRING },
-            pain_points: { type: Type.STRING },
-            interest: { type: Type.STRING }
+            name: { type: "STRING" },
+            email: { type: "STRING" },
+            business: { type: "STRING" },
+            phone: { type: "STRING" },
+            pain_points: { type: "STRING" },
+            interest: { type: "STRING" }
           },
           required: ["name", "email", "business"]
         }
@@ -59,30 +59,32 @@ const tools = [
   },
 ];
 
-let chatSession: Chat | null = null;
+let chatSession: ChatSession | null = null;
 let currentUserData: { name?: string; email?: string } = {};
 
 const getClient = () => {
-  const key = process.env.API_KEY;
+  // VITE FIX: Use import.meta.env instead of process.env
+  const key = import.meta.env.VITE_GEMINI_API_KEY;
   
   if (!key) {
-    console.error("API_KEY is missing. Ensure API_KEY is set in your environment variables.");
+    console.error("API_KEY is missing. Check Coolify Environment Variables.");
     return null;
   }
-  return new GoogleGenAI({ apiKey: key });
+  return new GoogleGenerativeAI(key);
 };
 
 export const initializeChat = async () => {
   const ai = getClient();
   if (!ai) return;
 
-  chatSession = ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.6, 
-        tools: tools, 
-    },
+  const model = ai.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: SYSTEM_INSTRUCTION,
+    tools: tools, 
+  });
+
+  chatSession = model.startChat({
+    history: [],
   });
 };
 
@@ -96,9 +98,6 @@ export interface GeminiResponse {
 const sendDataToN8N = (data: any) => {
   console.log("🚀 SENDING PAYLOAD TO N8N:", N8N_WEBHOOK_URL, data);
   
-  // Use keepalive to ensure request completes even if session resets
-  // Fire and forget - do not await
-  // REMOVED 'no-cors' to ensure Content-Type header is sent correctly
   fetch(N8N_WEBHOOK_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -111,7 +110,7 @@ const sendDataToN8N = (data: any) => {
 
 export const sendMessageToGemini = async (message: string): Promise<GeminiResponse> => {
   const ai = getClient();
-  if (!ai) return { text: "Config Error: API Key missing." };
+  if (!ai) return { text: "Config Error: API Key missing. Please check settings." };
 
   if (!chatSession) {
     await initializeChat();
@@ -120,18 +119,16 @@ export const sendMessageToGemini = async (message: string): Promise<GeminiRespon
   try {
     if (!chatSession) throw new Error("Session init failed");
 
-    // 1. Send Message (Corrected Syntax for SDK)
-    const result = await chatSession.sendMessage({
-      message: message, 
-    });
-
-    // 2. INTERCEPT TOOL CALLS (Client-Side Logic)
-    const candidates = result.candidates;
-    const modelPart = candidates?.[0]?.content?.parts?.[0];
+    // 1. Send Message
+    const result = await chatSession.sendMessage(message);
+    const response = await result.response;
+    
+    // 2. INTERCEPT TOOL CALLS
+    const functionCalls = response.functionCalls();
     
     // Check for Tool Calls
-    if (modelPart && modelPart.functionCall) {
-      const toolCall = modelPart.functionCall;
+    if (functionCalls && functionCalls.length > 0) {
+      const toolCall = functionCalls[0];
       const args = toolCall.args as any;
 
       console.log("⚡ Intercepting Tool:", toolCall.name);
@@ -146,7 +143,6 @@ export const sendMessageToGemini = async (message: string): Promise<GeminiRespon
 
       if (toolCall.name === 'capture_lead') {
         // SANITIZE DATA
-        // Remove spaces from phone to satisfy validation
         const cleanPhone = args.phone ? args.phone.replace(/\s/g, '') : "NotProvided";
 
         const safeData = {
@@ -156,7 +152,6 @@ export const sendMessageToGemini = async (message: string): Promise<GeminiRespon
           phone: cleanPhone,
           pain_points: args.pain_points || "General Inquiry",
           interest: args.interest || "Discovery Call",
-          // REMOVED lead_status: "NEW" - Let HubSpot assign default status to avoid validation errors
           source: 'spacetact_chat',
           timestamp: new Date().toISOString()
         };
@@ -168,7 +163,6 @@ export const sendMessageToGemini = async (message: string): Promise<GeminiRespon
 
         chatSession = null; // Reset
         
-        // AUTO-OPEN CALENDAR AFTER CAPTURE
         return {
             text: `Thanks ${safeData.name}. I've saved your details. Opening the calendar now to finalize your booking.`,
             action: 'OPEN_CALENDAR',
@@ -186,31 +180,28 @@ export const sendMessageToGemini = async (message: string): Promise<GeminiRespon
       }
     }
 
-    // 3. TEXT RESPONSE SCRUBBER (Fail-Safe)
-    let responseText = result.text || "";
+    // 3. TEXT RESPONSE HANDLING
+    let responseText = response.text() || "";
 
-    // If the model hallucinates the error message, BLOCK IT and return success/neutral
+    // Hallucination Guard
     if (responseText.includes("System overload") || responseText.includes("email us directly")) {
       console.warn("Blocked 'System Overload' Hallucination");
-      // If the user mentioned "book" or "call", assume they want the calendar
       if (message.toLowerCase().includes("book") || message.toLowerCase().includes("call")) {
           chatSession = null;
           return {
-              text: "I can help with that. First, could you provide your name and email?", // Ask for details first
-              action: undefined,
+              text: "I can help with that. First, could you provide your name and email?", 
               userData: currentUserData
           };
       }
-      // Otherwise just reset
       chatSession = null;
       return { text: "I can help with that. Could you clarify the details?" };
     }
 
     return { text: responseText };
-
   } catch (error) {
-    console.error("Gemini Critical Error:", error);
-    chatSession = null; // Hard reset
-    return { text: "I encountered a connection glitch. Could you say that again?" };
+    console.error("Gemini Error:", error);
+    // Silent fail recovery
+    chatSession = null;
+    return { text: "I'm connecting to the automation engine. Please try saying that again." };
   }
 };
