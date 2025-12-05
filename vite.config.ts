@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // This section fixes the white screen crash
   define: {
+    // This allows the Google AI SDK to work in the browser
     'process.env': {},
   },
   server: {
