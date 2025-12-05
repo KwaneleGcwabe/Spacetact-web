@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spacetact | AI Automation Solutions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                primary: '#8B5CF6', // Vibrant Purple
+                secondary: '#A855F7', // Light Purple
+                dark: '#7C3AED', // Darker interaction state
+                bg: '#F3E8FF', // Light purple bg for pills/icons
+              },
+              text: {
+                main: '#0A0A0A', // Very dark gray/black
+                heading: '#000000', // Pure black
+                body: '#404040', // Dark gray
+                muted: '#525252', // Muted gray
+                light: '#A3A3A3', // Footer links
+              },
+              surface: {
+                card: '#F9FAFB', // Soft gray
+                border: '#E5E5E5', // Light gray border
+              }
+            },
+            boxShadow: {
+              'soft': '0 4px 6px rgba(0, 0, 0, 0.05)',
+              'card': '0 10px 40px rgba(0, 0, 0, 0.06)',
+              'hero': '0 20px 60px rgba(0, 0, 0, 0.08)',
+              'button': '0 4px 12px rgba(139, 92, 246, 0.25)',
+              'glow': '0 0 20px rgba(139, 92, 246, 0.3)',
+              'strong-glow': '0 0 40px rgba(139, 92, 246, 0.5)',
+            },
+            backgroundImage: {
+              'cta-gradient': 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
+            },
+            animation: {
+              'shimmer': 'shimmer 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'heartbeat': 'heartbeat 3s ease-in-out infinite',
+              'float': 'float 6s ease-in-out infinite',
+            },
+            keyframes: {
+              shimmer: {
+                '0%': { transform: 'translateX(-100%) skewX(-12deg)' },
+                '100%': { transform: 'translateX(200%) skewX(-12deg)' },
+              },
+              heartbeat: {
+                '0%, 100%': { transform: 'scale(1)' },
+                '50%': { transform: 'scale(1.05)' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 80px;
+      }
+      body {
+        background-color: #FFFFFF;
+        color: #0A0A0A;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      /* Hide scrollbar for clean look in mockups */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

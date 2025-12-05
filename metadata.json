@@ -1,0 +1,7 @@
+{
+  "name": "Spacetact AI",
+  "description": "A futuristic landing page for Spacetact, an AI automation agency. Features an integrated Gemini-powered chatbot for intelligent lead capture and service explanations.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
