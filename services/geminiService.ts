@@ -84,7 +84,7 @@ export const initializeChat = async () => {
     // Use "gemini-1.5-flash" (The evergreen alias).
     // Do NOT use "-002" or "-latest" as they can 404 on the free tier.
     const model = ai.getGenerativeModel({
-      model: 'gemini-1.5-flash-001', 
+     model: 'gemini-pro', 
       systemInstruction: SYSTEM_INSTRUCTION,
       tools: tools, 
     });
