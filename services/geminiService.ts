@@ -8,6 +8,10 @@ const WEBHOOK_PROD = "https://n8n.spacetact.co.za/webhook/lead-capture";
 
 const N8N_WEBHOOK_URL = IS_PRODUCTION ? WEBHOOK_PROD : WEBHOOK_TEST;
 
+// Check which Variable you are actually using in .env (VITE_GOOGLE_API_KEY vs VITE_GEMINI_API_KEY)
+// This code checks both to be safe.
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
+
 const SYSTEM_INSTRUCTION = `
 You are Spacetact AI, an intelligent automation assistant.
 
@@ -27,7 +31,7 @@ CRITICAL PROTOCOL:
 - ABSOLUTELY FORBIDDEN: Do not ask the user to email "automations@spacetact.co.za" manually.
 `;
 
-// Tool Definitions using Correct Enums
+// Tool Definitions
 const tools = [
   {
     functionDeclarations: [
@@ -63,29 +67,36 @@ let chatSession: ChatSession | null = null;
 let currentUserData: { name?: string; email?: string } = {};
 
 const getClient = () => {
-  const key = import.meta.env.VITE_GEMINI_API_KEY;
-  
-  if (!key) {
-    console.error("API_KEY is missing. Check Coolify Environment Variables.");
+  if (!API_KEY) {
+    console.error("CRITICAL: API_KEY is missing. Check Coolify Environment Variables (VITE_GEMINI_API_KEY).");
     return null;
   }
-  return new GoogleGenerativeAI(key);
+  return new GoogleGenerativeAI(API_KEY);
 };
 
 export const initializeChat = async () => {
   const ai = getClient();
   if (!ai) return;
 
-  // UPDATED: Using specific model version to prevent 404 errors
-  const model = ai.getGenerativeModel({
-    model: 'gemini-1.5-flash-002',
-    systemInstruction: SYSTEM_INSTRUCTION,
-    tools: tools, 
-  });
-
-  chatSession = model.startChat({
-    history: [],
-  });
+  try {
+    // --- CRITICAL FIX ---
+    // Use "gemini-1.5-flash" (The evergreen alias).
+    // Do NOT use "-002" or "-latest" as they can 404 on the free tier.
+    const model = ai.getGenerativeModel({
+      model: 'gemini-1.5-flash', 
+      systemInstruction: SYSTEM_INSTRUCTION,
+      tools: tools, 
+    });
+  
+    chatSession = model.startChat({
+      history: [],
+      // Optional: Safety settings can be added here if needed
+    });
+    
+    console.log("Gemini Chat Initialized");
+  } catch (err) {
+    console.error("Failed to initialize Gemini:", err);
+  }
 };
 
 export interface GeminiResponse {
@@ -110,8 +121,9 @@ const sendDataToN8N = (data: any) => {
 
 export const sendMessageToGemini = async (message: string): Promise<GeminiResponse> => {
   const ai = getClient();
-  if (!ai) return { text: "Config Error: API Key missing. Please check settings." };
+  if (!ai) return { text: "Config Error: API Key missing. Please check Coolify settings." };
 
+  // Ensure session exists
   if (!chatSession) {
     await initializeChat();
   }
@@ -198,8 +210,15 @@ export const sendMessageToGemini = async (message: string): Promise<GeminiRespon
     }
 
     return { text: responseText };
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("Gemini Error:", error);
+
+    // Specific Error Handling for 404s or Overloads
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+       return { text: "I'm currently updating my knowledge base. Please try refreshing the page." };
+    }
+    
     // Silent fail recovery
     chatSession = null;
     return { text: "I'm connecting to the automation engine. Please try saying that again." };
