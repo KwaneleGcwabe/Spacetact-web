@@ -1,3 +1,4 @@
+// FORCE UPDATE V2 - FINAL FIX
 import { GoogleGenerativeAI, ChatSession, SchemaType } from "@google/generative-ai";
 
 // --- CONFIGURATION ---
