@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
-  Check, ArrowRight, Play, MessageSquare, Mic, 
-  Database, Workflow, Zap, Globe, Menu, X, Smartphone, 
-  BarChart3, Users, Mail, Layers, ShieldCheck, CheckCircle2,
-  FileText, Search, Loader2, Phone, Sparkles
+  Check, ArrowRight, MessageSquare, Mic, 
+  Database, Workflow, Zap, Menu, X, Smartphone, 
+  BarChart3, Phone, Sparkles, Mail, CheckCircle2,
+  FileText, Search, Loader2
 } from 'lucide-react';
 import Logo from './components/Logo';
 import ChatWidget from './components/ChatWidget';
 import ROICalculator from './components/ROICalculator';
 import { Message, CalculatorResults } from './types';
-import { sendMessageToGemini } from './services/geminiService';
+// Updated import to include clearSession
+import { sendMessageToGemini, clearSession } from './services/geminiService';
 
 // --- Animations ---
 const fadeIn = {
@@ -50,6 +51,8 @@ function App() {
   ]);
 
   // --- Handlers ---
+  
+  // 1. Open Chat & Optional Initial Message
   const openChat = (initialMessage?: string) => {
     setIsChatOpen(true);
     if (initialMessage) {
@@ -57,48 +60,71 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (text: string) => {
-    // Add user message
+  // 2. Main Message Handler (Connects to n8n)
+  const handleSendMessage = async (text: string, contextData?: any) => {
+    // Add user message to UI immediately
     const userMsg: Message = { id: Date.now(), role: 'user', text };
     setMessages(prev => [...prev, userMsg]);
     setIsTyping(true);
 
-    // Call Gemini
-    const response = await sendMessageToGemini(text);
+    try {
+      // Call n8n via GeminiService
+      // We pass 'contextData' (like ROI results) if it exists
+      const response = await sendMessageToGemini(text, contextData);
 
-    setIsTyping(false);
-    
-    // Add model response
-    const modelMsg: Message = { 
-      id: Date.now() + 1, 
-      role: 'model', 
-      text: response.text 
-    };
-    
-    // Handle Special Actions
-    if (response.action === 'SHOW_CAROUSEL') {
-       modelMsg.type = 'carousel';
-       modelMsg.carouselItems = [
-         { id: '1', title: 'AI Chatbots', description: '24/7 Lead capture & support', icon: <MessageSquare />, prompt: 'Tell me more about AI Chatbots' },
-         { id: '2', title: 'Voice Reception', description: 'Human-like phone answering', icon: <Mic />, prompt: 'How does the Voice Receptionist work?' },
-         { id: '3', title: 'Workflows', description: 'N8N Automation for tasks', icon: <Workflow />, prompt: 'Explain automated workflows' },
-         { id: '4', title: 'WhatsApp RAG', description: 'Knowledge base on WhatsApp', icon: <Smartphone />, prompt: 'What is WhatsApp RAG?' },
-       ];
-    } else if (response.action === 'OPEN_CALENDAR') {
-       // Open the calendar embed and pass captured data
-       setShowCalendar(true);
-       if (response.userData) {
-         setUserData(response.userData);
-       }
+      // Create Model Message
+      const modelMsg: Message = { 
+        id: Date.now() + 1, 
+        role: 'model', 
+        text: response.text,
+        type: response.type || 'text',
+        // The service now handles attaching the icons/items, so we just pass them through
+        carouselItems: response.carouselItems 
+      };
+      
+      // Handle Special Actions from n8n
+      if (response.action === 'OPEN_CALENDAR') {
+         setShowCalendar(true);
+         // If n8n/HubSpot returned user details, save them to pre-fill the calendar
+         if (response.userData) {
+           setUserData(response.userData);
+         }
+      }
+
+      setMessages(prev => [...prev, modelMsg]);
+
+    } catch (error) {
+      console.error("Chat Error:", error);
+      setMessages(prev => [...prev, { 
+        id: Date.now() + 1, 
+        role: 'model', 
+        text: "I'm having trouble connecting to the automation engine. Please try again." 
+      }]);
+    } finally {
+      setIsTyping(false);
     }
-
-    setMessages(prev => [...prev, modelMsg]);
   };
 
+  // 3. Handle ROI Calculator Completion
   const handleBookDiscovery = (results: CalculatorResults) => {
     setIsCalculatorOpen(false);
     setIsChatOpen(true);
-    handleSendMessage(`I just calculated my ROI. I could save ${new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(results.annualSavings)} annually! I'd like to book a Free Discovery Call.`);
+    
+    // Create a natural looking message for the user
+    const formattedSavings = new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(results.annualSavings);
+    const userMessage = `I just calculated my ROI. I could save ${formattedSavings} annually! I'd like to book a Free Discovery Call.`;
+
+    // Send message AND pass the full results object as hidden context
+    handleSendMessage(userMessage, results);
+  };
+
+  // 4. Reset Session
+  const handleEndSession = () => {
+    clearSession(); // Clears local storage ID
+    setIsChatOpen(false);
+    setShowCalendar(false);
+    setUserData({});
+    setMessages([{ id: Date.now(), role: 'model', text: "Session reset. How can I help you automate today?" }]);
   };
 
   return (
@@ -108,14 +134,10 @@ function App() {
       <ChatWidget 
         isOpen={isChatOpen}
         onMinimize={() => setIsChatOpen(false)}
-        onEndSession={() => {
-          setIsChatOpen(false);
-          setShowCalendar(false);
-          setMessages([{ id: Date.now(), role: 'model', text: "Session reset. How can I help you automate today?" }]);
-        }}
+        onEndSession={handleEndSession}
         messages={messages}
         isTyping={isTyping}
-        onSendMessage={handleSendMessage}
+        onSendMessage={(text) => handleSendMessage(text)}
         showCalendar={showCalendar}
         userData={userData}
         onCloseCalendar={() => setShowCalendar(false)}
@@ -601,6 +623,8 @@ function App() {
 }
 
 // --- Sub-Components ---
+// Note: These remain mostly unchanged as they are purely presentational, 
+// but I am including them to ensure the file is complete.
 
 const FeatureSection = ({ badge, title, description, bullets, align, MockupComponent, onAction }: any) => {
   return (
